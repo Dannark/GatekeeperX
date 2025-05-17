@@ -12,6 +12,14 @@ AREA_X_MAX = 0.95
 AREA_Y_MIN = 0.3
 AREA_Y_MAX = 0.95
 
+# Configurações da linha de entrada da casa (percentual da largura e altura)
+ENTRANCE_LINE_START_X = 0.14  # Ponto A - X inicial
+ENTRANCE_LINE_START_Y = 0.53  # Ponto A - Y inicial
+ENTRANCE_LINE_END_X = 0.2    # Ponto B - X final
+ENTRANCE_LINE_END_Y = 0.95    # Ponto B - Y final
+ENTRANCE_LINE_COLOR = (0, 0, 255)  # Cor vermelha (BGR)
+ENTRANCE_LINE_THICKNESS = 2
+
 # Configurações de tracking
 SPEED_HISTORY_SIZE = 5  # tamanho da média móvel para cálculo de velocidade
 TRAJECTORY_HISTORY_SIZE = 10  # número de posições para manter no histórico de trajetória

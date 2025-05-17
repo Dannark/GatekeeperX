@@ -9,7 +9,9 @@ from src.config.settings import (
     RTSP_URL, TIMEOUT_SECONDS, AREA_TIMEOUT_SECONDS,
     AREA_PRESENCE_THRESHOLD, AREA_X_MIN, AREA_X_MAX,
     AREA_Y_MIN, AREA_Y_MAX, ARROW_LENGTH, ARROW_COLOR,
-    ARROW_THICKNESS
+    ARROW_THICKNESS, ENTRANCE_LINE_START_X, ENTRANCE_LINE_START_Y,
+    ENTRANCE_LINE_END_X, ENTRANCE_LINE_END_Y, ENTRANCE_LINE_COLOR,
+    ENTRANCE_LINE_THICKNESS
 )
 
 class DetectionService:
@@ -154,6 +156,19 @@ class DetectionService:
         x1, y1 = int(AREA_X_MIN * w), int(AREA_Y_MIN * h)
         x2, y2 = int(AREA_X_MAX * w), int(AREA_Y_MAX * h)
         cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+        # Desenha linha de entrada da casa
+        entrance_start_x = int(ENTRANCE_LINE_START_X * w)
+        entrance_start_y = int(ENTRANCE_LINE_START_Y * h)
+        entrance_end_x = int(ENTRANCE_LINE_END_X * w)
+        entrance_end_y = int(ENTRANCE_LINE_END_Y * h)
+        cv2.line(
+            annotated,
+            (entrance_start_x, entrance_start_y),
+            (entrance_end_x, entrance_end_y),
+            ENTRANCE_LINE_COLOR,
+            ENTRANCE_LINE_THICKNESS
+        )
 
         # Adiciona informações de velocidade e direção
         for oid, obj in self.active_objects.items():
