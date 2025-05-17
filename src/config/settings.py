@@ -12,11 +12,11 @@ AREA_PRESENCE_THRESHOLD = 10  # tempo mínimo em segundos para considerar presen
 # Configurações de área de interesse (percentual da largura e altura)
 AREA_X_MIN = 0.1
 AREA_X_MAX = 0.95
-AREA_Y_MIN = 0.3
+AREA_Y_MIN = 0.25
 AREA_Y_MAX = 0.95
 
 # Configurações da linha de entrada da casa (percentual da largura e altura)
-ENTRANCE_LINE_START_X = 0.14  # Ponto A - X inicial
+ENTRANCE_LINE_START_X = 0.1  # Ponto A - X inicial
 ENTRANCE_LINE_START_Y = 0.5  # Ponto A - Y inicial
 ENTRANCE_LINE_END_X = 0.2    # Ponto B - X final
 ENTRANCE_LINE_END_Y = 0.95    # Ponto B - Y final
@@ -48,6 +48,14 @@ ARROW_TIP_ANGLE = 30  # ângulo da ponta da seta em graus
 LOOK_AT_ANGLE_THRESHOLD = 30  # ângulo máximo em graus para considerar que está olhando para a casa
 LOOK_AT_DISTANCE_THRESHOLD = 0.7  # distância máxima normalizada para considerar olhar (0-1)
 LOOK_AT_COLOR = (0, 165, 255)  # cor laranja para indicar olhar (BGR)
+
+# Configurações de pontuação de interesse
+INTEREST_SCORE_THRESHOLD = 40  # pontuação mínima para considerar interesse
+INTEREST_SCORE_LOOK_AT = 2  # pontos por frame olhando para a casa
+INTEREST_SCORE_STANDING = 1  # pontos por frame parado próximo à casa
+INTEREST_SCORE_DECAY = 0.95  # fator de decaimento base da pontuação por frame
+INTEREST_DISTANCE_THRESHOLD = 0.3  # distância máxima normalizada para considerar próximo à casa (0-1)
+INTEREST_SPEED_THRESHOLD = 1.0  # velocidade máxima em km/h para considerar parado
 
 # Configurações de log
 LOG_LEVEL = 2  # 0 = silencioso, 1 = normal, 2 = somente alertas 

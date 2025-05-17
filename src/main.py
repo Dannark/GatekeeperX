@@ -6,14 +6,13 @@ def main():
     
     try:
         while True:
-            result = detection_service.process_frame()
-            if result is None:
+            frame, results, now = detection_service.process_frame()
+            if frame is None:
                 break
                 
-            frame, results = result
-            annotated = detection_service.draw_annotations(frame, results)
+            annotated = detection_service.draw_annotations(frame, results, now)
+            cv2.imshow("GatekeeperX", annotated)
             
-            cv2.imshow("Detecção - YOLOv8", annotated)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
                 

@@ -13,7 +13,13 @@ from src.config.settings import (
     ENTRANCE_LINE_START_X,
     ENTRANCE_LINE_START_Y,
     ENTRANCE_LINE_END_X,
-    ENTRANCE_LINE_END_Y
+    ENTRANCE_LINE_END_Y,
+    INTEREST_SCORE_THRESHOLD,
+    INTEREST_SCORE_LOOK_AT,
+    INTEREST_SCORE_STANDING,
+    INTEREST_SCORE_DECAY,
+    INTEREST_DISTANCE_THRESHOLD,
+    INTEREST_SPEED_THRESHOLD
 )
 
 class TrackedObject:
@@ -50,6 +56,13 @@ class TrackedObject:
         self.is_looking_at = False
         self.look_at_history = []
         self.look_at_threshold = 3  # número de frames consecutivos para confirmar olhar
+
+        # Sistema de pontuação de interesse
+        self.interest_score = 0
+        self.is_interested = False
+        self.interest_start_time = None
+        self.last_distance = 1.0  # Inicializa com a distância máxima
+        self.has_logged_interest = False  # Flag para controlar o log de interesse
 
     def update_speed(self, current_position, time_diff, frame_width, depth):
         """
@@ -203,3 +216,85 @@ class TrackedObject:
         self.is_looking_at = len(self.look_at_history) == self.look_at_threshold and all(self.look_at_history)
         
         return self.is_looking_at 
+
+    def update_interest_score(self, frame_width, frame_height):
+        """
+        Atualiza a pontuação de interesse baseado no comportamento do objeto
+        Retorna uma tupla (is_interested, should_log)
+        """
+        if self.label != "person":
+            return False, False
+            
+        # Calcula o ponto mais próximo na linha da casa
+        entrance_start_x = ENTRANCE_LINE_START_X * frame_width
+        entrance_start_y = ENTRANCE_LINE_START_Y * frame_height
+        entrance_end_x = ENTRANCE_LINE_END_X * frame_width
+        entrance_end_y = ENTRANCE_LINE_END_Y * frame_height
+        
+        # Ponto atual do objeto
+        center_x = self.last_position[0]
+        center_y = self.last_position[1]
+        
+        # Calcula a distância perpendicular à linha da casa
+        # Usando a fórmula de distância ponto-linha
+        line_length = np.sqrt((entrance_end_x - entrance_start_x)**2 + (entrance_end_y - entrance_start_y)**2)
+        if line_length > 0:
+            # Normaliza o vetor da linha
+            line_dx = (entrance_end_x - entrance_start_x) / line_length
+            line_dy = (entrance_end_y - entrance_start_y) / line_length
+            
+            # Calcula o vetor do ponto inicial ao objeto
+            point_dx = center_x - entrance_start_x
+            point_dy = center_y - entrance_start_y
+            
+            # Calcula a distância perpendicular
+            perpendicular_distance = abs(point_dx * line_dy - point_dy * line_dx)
+            
+            # Normaliza a distância usando uma escala mais apropriada
+            # Usa 40% da largura da tela como referência para normalização
+            # (quanto maior o valor, mais sensível será a detecção de proximidade)
+            reference_distance = frame_width * 0.4
+            normalized_distance = min(perpendicular_distance / reference_distance, 1.0)
+            
+            # Armazena a distância normalizada
+            self.last_distance = normalized_distance
+            
+            # Ajusta o decaimento baseado na distância
+            # Quanto mais próximo da linha, menor o decaimento
+            decay_factor = INTEREST_SCORE_DECAY + (1 - INTEREST_SCORE_DECAY) * (1 - normalized_distance)
+        else:
+            self.last_distance = 1.0
+            decay_factor = INTEREST_SCORE_DECAY
+            
+        # Aplica decaimento da pontuação
+        self.interest_score *= decay_factor
+        
+        # Verifica se está olhando para a casa (só adiciona pontos)
+        is_looking = self.check_look_at(frame_width, frame_height)
+        if is_looking:
+            self.interest_score += INTEREST_SCORE_LOOK_AT
+            
+        # Verifica se está parado próximo à casa
+        is_standing = self.last_speed <= INTEREST_SPEED_THRESHOLD
+        
+        # Adiciona pontos por estar parado próximo à casa
+        if is_standing and normalized_distance < 0.3:  # Se estiver próximo da linha
+            self.interest_score += INTEREST_SCORE_STANDING
+            
+        # Atualiza status de interesse
+        if self.interest_score >= INTEREST_SCORE_THRESHOLD:
+            if not self.is_interested:
+                self.is_interested = True
+                self.interest_start_time = datetime.now()
+                self.has_logged_interest = False  # Reseta o flag quando atinge o threshold
+            should_log = not self.has_logged_interest  # Só loga se ainda não logou
+            if should_log:
+                self.has_logged_interest = True  # Marca que já logou
+        else:
+            if self.is_interested:
+                self.is_interested = False
+                self.interest_start_time = None
+                self.has_logged_interest = False  # Reseta o flag quando perde o interesse
+            should_log = False
+            
+        return self.is_interested, should_log  # Retorna se está interessado e se deve logar 

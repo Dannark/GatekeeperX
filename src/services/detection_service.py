@@ -94,8 +94,18 @@ class DetectionService:
 
                 current_ids.add(obj_id)
                 x1, y1, x2, y2 = box.xyxy[0]
-                center_x = (x1 + x2) / 2
-                center_y = (y1 + y2) / 2
+                
+                # Calcula a posição do objeto
+                # Para pessoas, usa um ponto 10% acima dos pés
+                # Para outros objetos, usa o centro do retângulo
+                if self.model.names[int(box.cls[0])] == "person":
+                    center_x = (x1 + x2) / 2
+                    height = y2 - y1
+                    center_y = y2 - (height * 0.1)  # 10% acima dos pés
+                else:
+                    center_x = (x1 + x2) / 2
+                    center_y = (y1 + y2) / 2
+                    
                 current_position = (center_x, center_y)
 
                 # Obtém a profundidade do objeto
@@ -114,6 +124,9 @@ class DetectionService:
                     if time_diff >= self.frame_time:
                         obj.update_speed(current_position, time_diff, frame.shape[1], depth)
                     obj.update_trajectory(current_position)
+                    is_interested, should_log = obj.update_interest_score(frame.shape[1], frame.shape[0])
+                    if is_interested and should_log:
+                        log(2, f"ID {obj_id} - {obj.label} mostrando interesse! Score: {obj.interest_score:.1f} | Distância: {obj.last_distance:.2f}")
                     obj.last_seen = now
                     obj.logged_exit = False
 
@@ -121,7 +134,7 @@ class DetectionService:
                 self.active_objects[obj_id].update_area_status(inside_area, now)
 
         self.cleanup_objects(now)
-        return frame, results
+        return frame, results, now
 
     def cleanup_objects(self, now):
         """Limpa objetos que saíram da câmera ou da área"""
@@ -152,7 +165,7 @@ class DetectionService:
                     log(2, f"ID {oid} - {obj.label} está há {total_time.total_seconds():.1f}s na área! ({now.strftime('%H:%M:%S')})")
                     obj.alerted_level = 2
 
-    def draw_annotations(self, frame, results):
+    def draw_annotations(self, frame, results, now):
         """Desenha anotações no frame"""
         if not results or len(results) == 0:
             return frame
@@ -189,8 +202,15 @@ class DetectionService:
                     box_id = int(box.id[0])
                     if box_id == oid:
                         x1, y1, x2, y2 = map(int, box.xyxy[0])
-                        center_x = (x1 + x2) / 2
-                        center_y = (y1 + y2) / 2
+                        
+                        # Calcula o ponto de referência do objeto
+                        if obj.label == "person":
+                            center_x = (x1 + x2) / 2
+                            height = y2 - y1
+                            center_y = y2 - (height * 0.1)  # 10% acima dos pés
+                        else:
+                            center_x = (x1 + x2) / 2
+                            center_y = (y1 + y2) / 2
                         
                         # Verifica interesse na casa
                         is_looking = obj.check_look_at(w, h)
@@ -202,8 +222,19 @@ class DetectionService:
                         
                         # Desenha velocidade
                         speed_text = f"{obj.last_speed:.1f} km/h"
-                        if is_looking:
+                        
+                        # Adiciona a distância à linha (sempre mostra)
+                        distance_text = f" [Dist: {obj.last_distance:.2f}]"
+                        speed_text += distance_text
+                        
+                        if obj.is_looking_at:
                             speed_text += " (Olhando)"
+                        if obj.is_interested:
+                            score_text = f" [Score: {obj.interest_score:.1f}]"
+                            if obj.interest_start_time:
+                                duration = now - obj.interest_start_time
+                                score_text += f" ({duration.total_seconds():.1f}s)"
+                            speed_text += score_text
                         
                         # Calcula o tamanho do texto para criar o fundo
                         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -211,21 +242,21 @@ class DetectionService:
                         thickness = 2
                         (text_width, text_height), _ = cv2.getTextSize(speed_text, font, font_scale, thickness)
                         
-                        # Desenha o fundo do texto
+                        # Desenha o fundo do texto no topo do retângulo
                         padding = 5
                         cv2.rectangle(
                             annotated,
-                            (x1, y2 - text_height - padding * 2),
-                            (x1 + text_width + padding * 2, y2),
+                            (x1, y1 - text_height - padding * 2 + 30),
+                            (x1 + text_width + padding * 2, y1 + 30),
                             (0, 0, 0),  # Cor preta para o fundo
                             -1  # Preenche o retângulo
                         )
                         
-                        # Desenha o texto da velocidade
+                        # Desenha o texto da velocidade no topo
                         cv2.putText(
                             annotated,
                             speed_text,
-                            (x1 + padding, y2 - padding),
+                            (x1 + padding, y1 - padding + 30),
                             font,
                             font_scale,
                             (255, 255, 255),  # Cor branca para o texto
