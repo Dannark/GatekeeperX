@@ -81,6 +81,12 @@ class DetectionService:
                     
                 try:
                     obj_id = int(box.id[0])
+                    confidence = float(box.conf[0])  # Obtém a confiança da detecção
+                    
+                    # Ignora detecções com baixa confiança
+                    if confidence < 0.65:  # 65% de confiança
+                        continue
+                        
                 except (ValueError, IndexError):
                     continue
 
