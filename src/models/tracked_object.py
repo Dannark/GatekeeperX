@@ -8,8 +8,8 @@ from src.config.settings import (
     MAX_SPEED_THRESHOLD,
     FRAME_HEIGHT,
     SPEED_CALIBRATION,
-    INTEREST_ANGLE_THRESHOLD,
-    INTEREST_DISTANCE_THRESHOLD,
+    LOOK_AT_ANGLE_THRESHOLD,
+    LOOK_AT_DISTANCE_THRESHOLD,
     ENTRANCE_LINE_START_X,
     ENTRANCE_LINE_START_Y,
     ENTRANCE_LINE_END_X,
@@ -46,10 +46,10 @@ class TrackedObject:
         self.movement_angle = 0  # Ângulo do movimento em graus
         self.direction_history = []  # Histórico de direções para suavização
         
-        # Interesse tracking
-        self.is_interested = False
-        self.interest_history = []
-        self.interest_threshold = 3  # número de frames consecutivos para confirmar interesse
+        # Look at tracking
+        self.is_looking_at = False
+        self.look_at_history = []
+        self.look_at_threshold = 3  # número de frames consecutivos para confirmar olhar
 
     def update_speed(self, current_position, time_diff, frame_width, depth):
         """
@@ -149,7 +149,7 @@ class TrackedObject:
                     self.total_area_time += time_in_area
                     self.area_entry_time = None 
 
-    def check_interest(self, frame_width, frame_height):
+    def check_look_at(self, frame_width, frame_height):
         """
         Verifica se o objeto está olhando para a casa
         Retorna True se o objeto está olhando para a casa
@@ -184,22 +184,22 @@ class TrackedObject:
             angle_diff = np.degrees(np.arccos(np.clip(dot_product, -1.0, 1.0)))
             
             # Verifica se está olhando para a entrada
-            is_looking = angle_diff <= INTEREST_ANGLE_THRESHOLD
+            is_looking = angle_diff <= LOOK_AT_ANGLE_THRESHOLD
         else:
             is_looking = False
         
         # Verifica se está a uma distância razoável
         distance_x = center_x / frame_width
         distance_y = center_y / frame_height
-        is_close = distance_x <= INTEREST_DISTANCE_THRESHOLD and distance_y >= 0.5
+        is_close = distance_x <= LOOK_AT_DISTANCE_THRESHOLD and distance_y >= 0.5
         
-        # Atualiza histórico de interesse
-        current_interest = is_looking and is_close
-        self.interest_history.append(current_interest)
-        if len(self.interest_history) > self.interest_threshold:
-            self.interest_history.pop(0)
+        # Atualiza histórico de olhar
+        current_look = is_looking and is_close
+        self.look_at_history.append(current_look)
+        if len(self.look_at_history) > self.look_at_threshold:
+            self.look_at_history.pop(0)
             
-        # Confirma interesse apenas se for consistente por alguns frames
-        self.is_interested = len(self.interest_history) == self.interest_threshold and all(self.interest_history)
+        # Confirma olhar apenas se for consistente por alguns frames
+        self.is_looking_at = len(self.look_at_history) == self.look_at_threshold and all(self.look_at_history)
         
-        return self.is_interested 
+        return self.is_looking_at 

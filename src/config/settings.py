@@ -1,6 +1,9 @@
 # Configurações da câmera
 RTSP_URL = "rtsp://Dannark:23021994@192.168.0.104:554/stream1"
 
+# Configurações de detecção
+MIN_CONFIDENCE = 0.65  # nível mínimo de confiança para considerar uma detecção válida
+
 # Configurações de tempo
 TIMEOUT_SECONDS = 3  # tolerância para considerar que saiu da cena
 AREA_TIMEOUT_SECONDS = 3  # tolerância para considerar que saiu da área
@@ -38,11 +41,13 @@ FRAME_HEIGHT = 720  # altura do frame em pixels (ajuste conforme sua câmera)
 ARROW_LENGTH = 30  # comprimento da seta de direção em pixels
 ARROW_COLOR = (0, 255, 0)  # cor da seta (BGR)
 ARROW_THICKNESS = 2  # espessura da seta
+ARROW_TIP_LENGTH = 0.3  # comprimento da ponta da seta (proporção do comprimento total)
+ARROW_TIP_ANGLE = 30  # ângulo da ponta da seta em graus
 
-# Configurações de detecção de interesse
-INTEREST_ANGLE_THRESHOLD = 30  # ângulo máximo em graus para considerar que está olhando para a casa (reduzido de 45 para 25)
-INTEREST_DISTANCE_THRESHOLD = 0.7  # distância máxima normalizada para considerar interesse (0-1)
-INTEREST_COLOR = (0, 165, 255)  # cor laranja para indicar interesse (BGR)
+# Configurações de detecção de olhar
+LOOK_AT_ANGLE_THRESHOLD = 30  # ângulo máximo em graus para considerar que está olhando para a casa
+LOOK_AT_DISTANCE_THRESHOLD = 0.7  # distância máxima normalizada para considerar olhar (0-1)
+LOOK_AT_COLOR = (0, 165, 255)  # cor laranja para indicar olhar (BGR)
 
 # Configurações de log
 LOG_LEVEL = 2  # 0 = silencioso, 1 = normal, 2 = somente alertas 

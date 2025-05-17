@@ -11,7 +11,9 @@ from src.config.settings import (
     AREA_Y_MIN, AREA_Y_MAX, ARROW_LENGTH, ARROW_COLOR,
     ARROW_THICKNESS, ENTRANCE_LINE_START_X, ENTRANCE_LINE_START_Y,
     ENTRANCE_LINE_END_X, ENTRANCE_LINE_END_Y, ENTRANCE_LINE_COLOR,
-    ENTRANCE_LINE_THICKNESS, INTEREST_COLOR
+    ENTRANCE_LINE_THICKNESS, MIN_CONFIDENCE, 
+    MIN_SPEED_THRESHOLD, MAX_SPEED_THRESHOLD,
+    ARROW_TIP_LENGTH, ARROW_TIP_ANGLE, LOOK_AT_COLOR
 )
 
 class DetectionService:
@@ -191,17 +193,17 @@ class DetectionService:
                         center_y = (y1 + y2) / 2
                         
                         # Verifica interesse na casa
-                        is_interested = obj.check_interest(w, h)
+                        is_looking = obj.check_look_at(w, h)
                         
                         # Desenha seta de direção apenas se a velocidade for maior que 1 km/h
                         if len(obj.position_history) >= 2 and obj.last_speed > 1.0:
-                            arrow_color = INTEREST_COLOR if is_interested else ARROW_COLOR
+                            arrow_color = LOOK_AT_COLOR if is_looking else ARROW_COLOR
                             self.draw_direction_arrow(annotated, (center_x, center_y), obj.smoothed_direction, color=arrow_color)
                         
                         # Desenha velocidade
                         speed_text = f"{obj.last_speed:.1f} km/h"
-                        if is_interested:
-                            speed_text += " (Interesse)"
+                        if is_looking:
+                            speed_text += " (Olhando)"
                         
                         # Calcula o tamanho do texto para criar o fundo
                         font = cv2.FONT_HERSHEY_SIMPLEX
