@@ -51,8 +51,8 @@ class TrackedObject:
         speed_pixels = calculate_speed(distance, time_diff)
         
         # Ajusta a velocidade baseada na profundidade
-        # Quanto maior a profundidade (mais distante), maior a correção
-        depth_factor = 1.0 + (depth * 0.5)  # Reduz o impacto da profundidade
+        # Quanto menor a profundidade (mais próximo), maior a redução
+        depth_factor = 0.3 + (depth * 0.7)  # Reduz mais a velocidade de objetos próximos
         adjusted_speed = speed_pixels * depth_factor
         
         # Converte para km/h
