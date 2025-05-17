@@ -7,7 +7,13 @@ from src.config.settings import (
     MIN_SPEED_THRESHOLD,
     MAX_SPEED_THRESHOLD,
     FRAME_HEIGHT,
-    SPEED_CALIBRATION
+    SPEED_CALIBRATION,
+    INTEREST_ANGLE_THRESHOLD,
+    INTEREST_DISTANCE_THRESHOLD,
+    ENTRANCE_LINE_START_X,
+    ENTRANCE_LINE_START_Y,
+    ENTRANCE_LINE_END_X,
+    ENTRANCE_LINE_END_Y
 )
 
 class TrackedObject:
@@ -39,6 +45,11 @@ class TrackedObject:
         self.smoothed_direction = (0, 0)  # Vetor de direção suavizado
         self.movement_angle = 0  # Ângulo do movimento em graus
         self.direction_history = []  # Histórico de direções para suavização
+        
+        # Interesse tracking
+        self.is_interested = False
+        self.interest_history = []
+        self.interest_threshold = 3  # número de frames consecutivos para confirmar interesse
 
     def update_speed(self, current_position, time_diff, frame_width, depth):
         """
@@ -137,3 +148,58 @@ class TrackedObject:
                     time_in_area = now - self.area_entry_time
                     self.total_area_time += time_in_area
                     self.area_entry_time = None 
+
+    def check_interest(self, frame_width, frame_height):
+        """
+        Verifica se o objeto está olhando para a casa
+        Retorna True se o objeto está olhando para a casa
+        """
+        if self.label != "person":
+            return False
+            
+        # Calcula o ponto médio da linha de entrada
+        entrance_center_x = (ENTRANCE_LINE_START_X + ENTRANCE_LINE_END_X) * frame_width / 2
+        entrance_center_y = (ENTRANCE_LINE_START_Y + ENTRANCE_LINE_END_Y) * frame_height / 2
+        
+        # Calcula o ângulo entre o objeto e o centro da entrada
+        center_x = self.last_position[0]
+        center_y = self.last_position[1]
+        
+        # Calcula o vetor da direção atual do objeto
+        current_dx = self.smoothed_direction[0]
+        current_dy = self.smoothed_direction[1]
+        
+        # Calcula o vetor da direção para a entrada
+        to_entrance_dx = entrance_center_x - center_x
+        to_entrance_dy = entrance_center_y - center_y
+        
+        # Normaliza o vetor para a entrada
+        magnitude = np.sqrt(to_entrance_dx**2 + to_entrance_dy**2)
+        if magnitude > 0:
+            to_entrance_dx /= magnitude
+            to_entrance_dy /= magnitude
+            
+            # Calcula o ângulo entre os dois vetores usando produto escalar
+            dot_product = current_dx * to_entrance_dx + current_dy * to_entrance_dy
+            angle_diff = np.degrees(np.arccos(np.clip(dot_product, -1.0, 1.0)))
+            
+            # Verifica se está olhando para a entrada
+            is_looking = angle_diff <= INTEREST_ANGLE_THRESHOLD
+        else:
+            is_looking = False
+        
+        # Verifica se está a uma distância razoável
+        distance_x = center_x / frame_width
+        distance_y = center_y / frame_height
+        is_close = distance_x <= INTEREST_DISTANCE_THRESHOLD and distance_y >= 0.5
+        
+        # Atualiza histórico de interesse
+        current_interest = is_looking and is_close
+        self.interest_history.append(current_interest)
+        if len(self.interest_history) > self.interest_threshold:
+            self.interest_history.pop(0)
+            
+        # Confirma interesse apenas se for consistente por alguns frames
+        self.is_interested = len(self.interest_history) == self.interest_threshold and all(self.interest_history)
+        
+        return self.is_interested 

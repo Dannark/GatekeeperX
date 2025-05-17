@@ -14,7 +14,7 @@ AREA_Y_MAX = 0.95
 
 # Configurações da linha de entrada da casa (percentual da largura e altura)
 ENTRANCE_LINE_START_X = 0.14  # Ponto A - X inicial
-ENTRANCE_LINE_START_Y = 0.53  # Ponto A - Y inicial
+ENTRANCE_LINE_START_Y = 0.5  # Ponto A - Y inicial
 ENTRANCE_LINE_END_X = 0.2    # Ponto B - X final
 ENTRANCE_LINE_END_Y = 0.95    # Ponto B - Y final
 ENTRANCE_LINE_COLOR = (0, 0, 255)  # Cor vermelha (BGR)
@@ -38,6 +38,11 @@ FRAME_HEIGHT = 720  # altura do frame em pixels (ajuste conforme sua câmera)
 ARROW_LENGTH = 30  # comprimento da seta de direção em pixels
 ARROW_COLOR = (0, 255, 0)  # cor da seta (BGR)
 ARROW_THICKNESS = 2  # espessura da seta
+
+# Configurações de detecção de interesse
+INTEREST_ANGLE_THRESHOLD = 30  # ângulo máximo em graus para considerar que está olhando para a casa (reduzido de 45 para 25)
+INTEREST_DISTANCE_THRESHOLD = 0.7  # distância máxima normalizada para considerar interesse (0-1)
+INTEREST_COLOR = (0, 165, 255)  # cor laranja para indicar interesse (BGR)
 
 # Configurações de log
 LOG_LEVEL = 2  # 0 = silencioso, 1 = normal, 2 = somente alertas 

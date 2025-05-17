@@ -11,7 +11,7 @@ from src.config.settings import (
     AREA_Y_MIN, AREA_Y_MAX, ARROW_LENGTH, ARROW_COLOR,
     ARROW_THICKNESS, ENTRANCE_LINE_START_X, ENTRANCE_LINE_START_Y,
     ENTRANCE_LINE_END_X, ENTRANCE_LINE_END_Y, ENTRANCE_LINE_COLOR,
-    ENTRANCE_LINE_THICKNESS
+    ENTRANCE_LINE_THICKNESS, INTEREST_COLOR
 )
 
 class DetectionService:
@@ -50,14 +50,14 @@ class DetectionService:
         box_area = (x2 - x1) * (y2 - y1)
         return inter_area > 0.1 * box_area
 
-    def draw_direction_arrow(self, frame, center, direction, length=ARROW_LENGTH):
+    def draw_direction_arrow(self, frame, center, direction, length=ARROW_LENGTH, color=ARROW_COLOR):
         """Desenha uma seta indicando a direção do movimento"""
         end_x = int(center[0] + direction[0] * length)
         end_y = int(center[1] + direction[1] * length)
         cv2.arrowedLine(frame, 
                        (int(center[0]), int(center[1])),
                        (end_x, end_y),
-                       ARROW_COLOR,
+                       color,
                        ARROW_THICKNESS,
                        tipLength=0.3)
 
@@ -190,13 +190,18 @@ class DetectionService:
                         center_x = (x1 + x2) / 2
                         center_y = (y1 + y2) / 2
                         
+                        # Verifica interesse na casa
+                        is_interested = obj.check_interest(w, h)
+                        
                         # Desenha seta de direção apenas se a velocidade for maior que 1 km/h
                         if len(obj.position_history) >= 2 and obj.last_speed > 1.0:
-                            self.draw_direction_arrow(annotated, (center_x, center_y), obj.smoothed_direction)
+                            arrow_color = INTEREST_COLOR if is_interested else ARROW_COLOR
+                            self.draw_direction_arrow(annotated, (center_x, center_y), obj.smoothed_direction, color=arrow_color)
                         
-                        # Desenha velocidade e profundidade
+                        # Desenha velocidade
                         speed_text = f"{obj.last_speed:.1f} km/h"
-                        depth_text = f"Prof: {obj.last_depth:.2f}"
+                        if is_interested:
+                            speed_text += " (Interesse)"
                         
                         # Calcula o tamanho do texto para criar o fundo
                         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -224,17 +229,6 @@ class DetectionService:
                             (255, 255, 255),  # Cor branca para o texto
                             thickness
                         )
-                        
-                        # Desenha o texto da profundidade
-                        # cv2.putText(
-                        #     annotated,
-                        #     depth_text,
-                        #     (x1, y2 - text_height - padding * 4),
-                        #     font,
-                        #     font_scale,
-                        #     (255, 255, 255),
-                        #     thickness
-                        # )
                         break
                 except (ValueError, IndexError):
                     continue
