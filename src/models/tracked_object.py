@@ -1,6 +1,14 @@
 from datetime import datetime, timedelta
 import numpy as np
-from src.config.settings import SPEED_HISTORY_SIZE, TRAJECTORY_HISTORY_SIZE, DIRECTION_SMOOTHING_FACTOR
+from src.config.settings import (
+    SPEED_HISTORY_SIZE, 
+    TRAJECTORY_HISTORY_SIZE, 
+    DIRECTION_SMOOTHING_FACTOR,
+    MIN_SPEED_THRESHOLD,
+    MAX_SPEED_THRESHOLD,
+    FRAME_HEIGHT,
+    SPEED_CALIBRATION
+)
 
 class TrackedObject:
     def __init__(self, obj_id, label, position):
@@ -23,6 +31,7 @@ class TrackedObject:
         self.last_speed = 0
         self.speed_history = []
         self.last_speed_update = datetime.now()
+        self.last_depth = 0.0  # profundidade do objeto
 
         # Trajetória tracking
         self.position_history = [position]  # Lista de tuplas (x, y)
@@ -31,16 +40,30 @@ class TrackedObject:
         self.movement_angle = 0  # Ângulo do movimento em graus
         self.direction_history = []  # Histórico de direções para suavização
 
-    def update_speed(self, current_position, time_diff, frame_width):
-        """Atualiza a velocidade do objeto"""
-        from src.utils.helpers import calculate_distance, calculate_speed, pixels_to_meters
+    def update_speed(self, current_position, time_diff, frame_width, depth):
+        """
+        Atualiza a velocidade do objeto considerando a profundidade
+        depth: valor de profundidade do objeto (0-1, onde 0 é mais próximo)
+        """
+        from src.utils.helpers import calculate_distance, calculate_speed
         
         distance = calculate_distance(self.last_position, current_position)
         speed_pixels = calculate_speed(distance, time_diff)
         
+        # Ajusta a velocidade baseada na profundidade
+        # Quanto maior a profundidade (mais distante), maior a correção
+        depth_factor = 1.0 + (depth * 0.5)  # Reduz o impacto da profundidade
+        adjusted_speed = speed_pixels * depth_factor
+        
         # Converte para km/h
-        speed_mps = pixels_to_meters(speed_pixels, frame_width)
-        speed_kmh = speed_mps * 3.6
+        # Assumindo que 100 pixels/s = SPEED_CALIBRATION km/h para objetos próximos
+        speed_kmh = (adjusted_speed / 100) * SPEED_CALIBRATION
+        
+        # Aplica limites de velocidade
+        if speed_kmh < MIN_SPEED_THRESHOLD:
+            speed_kmh = 0
+        elif speed_kmh > MAX_SPEED_THRESHOLD:
+            speed_kmh = MAX_SPEED_THRESHOLD
         
         # Atualiza histórico
         self.speed_history.append(speed_kmh)
@@ -50,6 +73,7 @@ class TrackedObject:
         # Calcula média
         self.last_speed = sum(self.speed_history) / len(self.speed_history)
         self.last_position = current_position
+        self.last_depth = depth
         self.last_speed_update = datetime.now()
 
     def update_trajectory(self, current_position):

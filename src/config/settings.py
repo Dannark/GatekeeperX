@@ -12,11 +12,19 @@ AREA_X_MAX = 0.95
 AREA_Y_MIN = 0.3
 AREA_Y_MAX = 0.95
 
-# Configurações de velocidade
-REAL_WIDTH_METERS = 5  # largura real da cena em metros
+# Configurações de tracking
 SPEED_HISTORY_SIZE = 5  # tamanho da média móvel para cálculo de velocidade
 TRAJECTORY_HISTORY_SIZE = 10  # número de posições para manter no histórico de trajetória
 DIRECTION_SMOOTHING_FACTOR = 0.3  # fator de suavização da direção (0-1)
+
+# Configurações de velocidade
+MIN_SPEED_THRESHOLD = 0.5  # velocidade mínima em km/h para considerar movimento
+MAX_SPEED_THRESHOLD = 30.0  # velocidade máxima em km/h para filtrar ruído
+SPEED_CALIBRATION = 5.0  # velocidade de referência em km/h para 100 pixels/s
+
+# Configurações de calibração de velocidade
+PERSPECTIVE_CORRECTION_FACTOR = 2.0  # fator de correção da perspectiva (maior = mais correção)
+FRAME_HEIGHT = 720  # altura do frame em pixels (ajuste conforme sua câmera)
 
 # Configurações de visualização
 ARROW_LENGTH = 30  # comprimento da seta de direção em pixels

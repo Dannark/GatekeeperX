@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from ultralytics import YOLO
 from src.models.tracked_object import TrackedObject
 from src.utils.helpers import log
+from src.services.depth_service import DepthService
 from src.config.settings import (
     RTSP_URL, TIMEOUT_SECONDS, AREA_TIMEOUT_SECONDS,
     AREA_PRESENCE_THRESHOLD, AREA_X_MIN, AREA_X_MAX,
@@ -14,10 +15,18 @@ from src.config.settings import (
 class DetectionService:
     def __init__(self):
         self.model = YOLO("yolov8n.pt")
+        self.depth_service = DepthService()
         self.cap = cv2.VideoCapture(RTSP_URL)
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_time = 1/self.fps
         self.active_objects = {}
+        
+        # Calibra a profundidade com o primeiro frame
+        ret, frame = self.cap.read()
+        if ret:
+            self.depth_service.calibrate_depth(frame)
+            # Volta o vídeo para o início
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
     def calculate_area_box(self, frame_shape):
         """Calcula as coordenadas da área de interesse"""
@@ -79,6 +88,9 @@ class DetectionService:
                 center_y = (y1 + y2) / 2
                 current_position = (center_x, center_y)
 
+                # Obtém a profundidade do objeto
+                depth = self.depth_service.get_depth_for_box((x1, y1, x2, y2))
+
                 if obj_id not in self.active_objects:
                     self.active_objects[obj_id] = TrackedObject(
                         obj_id,
@@ -90,7 +102,7 @@ class DetectionService:
                     obj = self.active_objects[obj_id]
                     time_diff = (now - obj.last_speed_update).total_seconds()
                     if time_diff >= self.frame_time:
-                        obj.update_speed(current_position, time_diff, frame.shape[1])
+                        obj.update_speed(current_position, time_diff, frame.shape[1], depth)
                     obj.update_trajectory(current_position)
                     obj.last_seen = now
                     obj.logged_exit = False
@@ -157,13 +169,51 @@ class DetectionService:
                         center_x = (x1 + x2) / 2
                         center_y = (y1 + y2) / 2
                         
-                        # Desenha seta de direção
-                        if len(obj.position_history) >= 2:
+                        # Desenha seta de direção apenas se a velocidade for maior que 1 km/h
+                        if len(obj.position_history) >= 2 and obj.last_speed > 1.0:
                             self.draw_direction_arrow(annotated, (center_x, center_y), obj.smoothed_direction)
                         
-                        # Desenha velocidade
+                        # Desenha velocidade e profundidade
                         speed_text = f"{obj.last_speed:.1f} km/h"
-                        cv2.putText(annotated, speed_text, (x1, y2-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                        depth_text = f"Prof: {obj.last_depth:.2f}"
+                        
+                        # Calcula o tamanho do texto para criar o fundo
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        font_scale = 0.6
+                        thickness = 2
+                        (text_width, text_height), _ = cv2.getTextSize(speed_text, font, font_scale, thickness)
+                        
+                        # Desenha o fundo do texto
+                        padding = 5
+                        cv2.rectangle(
+                            annotated,
+                            (x1, y2 - text_height - padding * 2),
+                            (x1 + text_width + padding * 2, y2),
+                            (0, 0, 0),  # Cor preta para o fundo
+                            -1  # Preenche o retângulo
+                        )
+                        
+                        # Desenha o texto da velocidade
+                        cv2.putText(
+                            annotated,
+                            speed_text,
+                            (x1 + padding, y2 - padding),
+                            font,
+                            font_scale,
+                            (255, 255, 255),  # Cor branca para o texto
+                            thickness
+                        )
+                        
+                        # Desenha o texto da profundidade
+                        # cv2.putText(
+                        #     annotated,
+                        #     depth_text,
+                        #     (x1, y2 - text_height - padding * 4),
+                        #     font,
+                        #     font_scale,
+                        #     (255, 255, 255),
+                        #     thickness
+                        # )
                         break
                 except (ValueError, IndexError):
                     continue
@@ -173,4 +223,5 @@ class DetectionService:
     def cleanup(self):
         """Limpa recursos"""
         self.cap.release()
+        self.depth_service.cleanup()
         cv2.destroyAllWindows() 
