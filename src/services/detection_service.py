@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from datetime import datetime, timedelta
 from ultralytics import YOLO
 from src.models.tracked_object import TrackedObject
@@ -6,7 +7,8 @@ from src.utils.helpers import log
 from src.config.settings import (
     RTSP_URL, TIMEOUT_SECONDS, AREA_TIMEOUT_SECONDS,
     AREA_PRESENCE_THRESHOLD, AREA_X_MIN, AREA_X_MAX,
-    AREA_Y_MIN, AREA_Y_MAX
+    AREA_Y_MIN, AREA_Y_MAX, ARROW_LENGTH, ARROW_COLOR,
+    ARROW_THICKNESS
 )
 
 class DetectionService:
@@ -37,6 +39,17 @@ class DetectionService:
         box_area = (x2 - x1) * (y2 - y1)
         return inter_area > 0.1 * box_area
 
+    def draw_direction_arrow(self, frame, center, direction, length=ARROW_LENGTH):
+        """Desenha uma seta indicando a direção do movimento"""
+        end_x = int(center[0] + direction[0] * length)
+        end_y = int(center[1] + direction[1] * length)
+        cv2.arrowedLine(frame, 
+                       (int(center[0]), int(center[1])),
+                       (end_x, end_y),
+                       ARROW_COLOR,
+                       ARROW_THICKNESS,
+                       tipLength=0.3)
+
     def process_frame(self):
         """Processa um frame da câmera"""
         ret, frame = self.cap.read()
@@ -51,8 +64,13 @@ class DetectionService:
 
         for r in results:
             for box in r.boxes:
-                obj_id = int(box.id[0]) if box.id is not None else None
-                if obj_id is None:
+                # Verifica se o box tem ID e se é válido
+                if box.id is None or len(box.id) == 0:
+                    continue
+                    
+                try:
+                    obj_id = int(box.id[0])
+                except (ValueError, IndexError):
                     continue
 
                 current_ids.add(obj_id)
@@ -73,6 +91,7 @@ class DetectionService:
                     time_diff = (now - obj.last_speed_update).total_seconds()
                     if time_diff >= self.frame_time:
                         obj.update_speed(current_position, time_diff, frame.shape[1])
+                    obj.update_trajectory(current_position)
                     obj.last_seen = now
                     obj.logged_exit = False
 
@@ -113,6 +132,9 @@ class DetectionService:
 
     def draw_annotations(self, frame, results):
         """Desenha anotações no frame"""
+        if not results or len(results) == 0:
+            return frame
+            
         annotated = results[0].plot()
         
         # Desenha área de interesse
@@ -121,14 +143,30 @@ class DetectionService:
         x2, y2 = int(AREA_X_MAX * w), int(AREA_Y_MAX * h)
         cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
-        # Adiciona informações de velocidade
+        # Adiciona informações de velocidade e direção
         for oid, obj in self.active_objects.items():
             for box in results[0].boxes:
-                if int(box.id[0]) == oid:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    speed_text = f"{obj.last_speed:.1f} km/h"
-                    cv2.putText(annotated, speed_text, (x1, y2-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    break
+                # Verifica se o box tem ID e se é válido
+                if box.id is None or len(box.id) == 0:
+                    continue
+                    
+                try:
+                    box_id = int(box.id[0])
+                    if box_id == oid:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                        
+                        # Desenha seta de direção
+                        if len(obj.position_history) >= 2:
+                            self.draw_direction_arrow(annotated, (center_x, center_y), obj.smoothed_direction)
+                        
+                        # Desenha velocidade
+                        speed_text = f"{obj.last_speed:.1f} km/h"
+                        cv2.putText(annotated, speed_text, (x1, y2-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                        break
+                except (ValueError, IndexError):
+                    continue
 
         return annotated
 
