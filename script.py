@@ -19,7 +19,7 @@ AREA_TIMEOUT_SECONDS = 3  # tolerância para considerar que saiu da área
 AREA_PRESENCE_THRESHOLD = 10  # tempo mínimo em segundos para considerar presença na área
 
 LOG_LEVEL = 2 # 0 = silencioso, 1 = normal, 2 = somente alertas
-def log(level, message):
+def     log(level, message):
     if level >= LOG_LEVEL:
         print(message)
 
