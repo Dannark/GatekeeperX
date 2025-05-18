@@ -1,27 +1,63 @@
+import os
+import sys
+import argparse
+
+# Adiciona o diretório raiz ao PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import cv2
 import threading
 from flask import Flask, Response
 from src.services.detection_service import DetectionService
-import os
 
 app = Flask(__name__)
 last_frame = None  # Variável global para armazenar o último frame processado
 
+# Configuração do parser de argumentos
+parser = argparse.ArgumentParser(description='GatekeeperX - Sistema de detecção inteligente')
+parser.add_argument('--camera-ip', type=str, help='IP da câmera (ex: 192.168.0.100)')
+parser.add_argument('--username', type=str, default='Dannark', help='Usuário da câmera (padrão: Dannark)')
+parser.add_argument('--password', type=str, default='23021994', help='Senha da câmera (padrão: 23021994)')
+args = parser.parse_args()
+
+# IP padrão da câmera
+DEFAULT_CAMERA_IP = "192.168.0.100"
+
+def build_rtsp_url(ip, username=None, password=None):
+    """Constrói a URL RTSP a partir do IP e credenciais"""
+    if username and password:
+        return f"rtsp://{username}:{password}@{ip}:554/stream1"
+    return f"rtsp://{ip}:554/stream1"
+
 def processing_loop():
     global last_frame
-    detection_service = DetectionService()
+    # Usa o IP fornecido via argumento ou o IP padrão
+    camera_ip = args.camera_ip if args.camera_ip else DEFAULT_CAMERA_IP
+    rtsp_url = build_rtsp_url(camera_ip, args.username, args.password)
+    print(f"Conectando à câmera em: {rtsp_url}")
+    
     try:
+        detection_service = DetectionService(camera_ip=rtsp_url)
+        detection_service.start()
         while True:
             frame, results, now = detection_service.process_frame()
             if frame is None:
+                print("Erro ao processar frame. Tentando reconectar...")
                 break
             annotated = detection_service.draw_annotations(frame, results, now)
             last_frame = annotated  # Atualiza o frame global
-            # cv2.imshow("GatekeeperX", annotated)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+    except Exception as e:
+        print(f"Erro ao conectar com a câmera: {str(e)}")
+        print("Verifique se:")
+        print("1. O IP está correto")
+        print("2. A câmera está ligada e conectada à rede")
+        print("3. A porta 554 está aberta")
+        print("4. O usuário e senha da câmera estão corretos (se necessário)")
     finally:
-        detection_service.cleanup()
+        if 'detection_service' in locals():
+            detection_service.cleanup()
 
 def gen_frames():
     global last_frame

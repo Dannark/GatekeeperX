@@ -17,10 +17,20 @@ from src.config.settings import (
 )
 
 class DetectionService:
-    def __init__(self):
+    def __init__(self, camera_ip=None):
+        # Carrega o modelo YOLO
         self.model = YOLO("yolov8n.pt")
+        
+        # Inicializa a câmera
+        self.camera_ip = camera_ip or "rtsp://192.168.0.100:554/stream"
+        self.cap = cv2.VideoCapture(self.camera_ip)
+        
+        if not self.cap.isOpened():
+            raise Exception(f"Não foi possível conectar à câmera em {self.camera_ip}")
+            
+        # Inicializa o serviço de profundidade
         self.depth_service = DepthService()
-        self.cap = cv2.VideoCapture(RTSP_URL)
+        
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_time = 1/self.fps
         self.active_objects = {}
