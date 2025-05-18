@@ -1,6 +1,17 @@
 import math
 from datetime import datetime
 from src.config.settings import LOG_LEVEL
+import os
+
+LOG_FILE = 'gatekeeperx.log'
+
+# Zera o arquivo de log ao iniciar o servidor
+if os.path.exists(LOG_FILE):
+    with open(LOG_FILE, 'w') as f:
+        f.write('')
+else:
+    with open(LOG_FILE, 'w') as f:
+        f.write('')
 
 def calculate_distance(point1, point2):
     """Calcula a distância euclidiana entre dois pontos"""
@@ -48,13 +59,19 @@ def pixels_to_meters(pixels_per_second, frame_width, y_position, frame_height, c
 
 def log(level, message):
     """
-    Função de log com níveis
-    level: nível do log (0 = silencioso, 1 = normal, 2 = somente alertas)
+    Exibe e registra logs do sistema.
+    level: nível do log (0=debug, 1=info, 2=alerta)
     message: mensagem a ser exibida
     """
-    if level >= LOG_LEVEL:  # Inverte a lógica para que níveis maiores mostrem menos logs
+    if level >= LOG_LEVEL:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] {message}")
+        log_line = f"[{timestamp}] {message}"
+        print(log_line)
+        # Só registra logs de nível 2
+        if level == 2:
+            with open(LOG_FILE, 'a') as f:
+                f.write(log_line + '\n')
+            print('\a', end='', flush=True)  # Bip para todos os logs nível 2
 
 def format_time(dt):
     """Formata datetime para string legível"""
