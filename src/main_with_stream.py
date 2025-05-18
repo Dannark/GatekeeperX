@@ -38,7 +38,6 @@ def processing_loop():
     
     try:
         detection_service = DetectionService(camera_ip=rtsp_url)
-        detection_service.start()
         while True:
             frame, results, now = detection_service.process_frame()
             if frame is None:
